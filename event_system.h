@@ -31,8 +31,11 @@ public:
     static void StartUp();
     static void ShutDown();
 
-    static EventListenerID Subscribe(const EventType &type, const EventCallback &callback);
-    static void Unsubscribe(const EventType &type, const EventListenerID listenerID);
+    static EventListenerID Subscribe(const EventCallback &callback, EventType type);
+    static EventListenerID Subscribe(const EventCallback &callback, std::vector<EventType> types);
+    static void Unsubscribe(const EventListenerID listener, EventType type);
+    static void Unsubscribe(const EventListenerID listener, std::vector<EventType> types);
+    
     static void PublishQueued(const Event &event);
     static void PublishImmediate(const Event &event);
 
@@ -48,6 +51,8 @@ private:
     static EventSystem *sInstance;
 
     EventListenerID mTotalListeners;
-    std::unordered_map<EventType, std::vector<std::pair<EventListenerID, EventCallback>>> mListeners;
+    std::unordered_map<EventListenerID, EventCallback> mCallbacks;
+    std::unordered_map<EventType, std::vector<EventListenerID>> mListeners;
+
     std::queue<Event> mEventQueue;
 };

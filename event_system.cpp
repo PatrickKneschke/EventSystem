@@ -29,18 +29,36 @@ void EventSystem::ShutDown() {
 }
 
 
-EventListenerID EventSystem::Subscribe(const EventType &type, const EventCallback &callback) {
+EventListenerID EventSystem::Subscribe(const EventCallback &callback, EventType type) {
 
     assert(sInstance != nullptr);
 
     auto id = sInstance->mTotalListeners++;
-    sInstance->mListeners[type].emplace_back(id, callback);
+    sInstance->mCallbacks[id] = callback;
+    sInstance->mListeners[type].push_back(id);
 
     return id;
 }
 
 
-void EventSystem::Unsubscribe(const EventType &type, const EventListenerID listenerID){
+EventListenerID EventSystem::Subscribe(const EventCallback &callback, std::vector<EventType> types) {
+
+    assert(sInstance != nullptr);
+
+    auto id = sInstance->mTotalListeners++;
+    sInstance->mCallbacks[id] = callback;
+
+    for (auto type : types)
+    {
+        sInstance->mListeners[type].push_back(id);
+    }
+    
+
+    return id;
+}
+
+
+void EventSystem::Unsubscribe(const EventListenerID listener, EventType type){
 
     assert(sInstance != nullptr);
 
@@ -50,12 +68,17 @@ void EventSystem::Unsubscribe(const EventType &type, const EventListenerID liste
     }
 
     auto& listeners = sInstance->mListeners[type];
-    listeners.erase(std::remove_if(listeners.begin(), listeners.end(), 
-        [listenerID](const std::pair<EventListenerID, EventCallback> &pair) {
-            return pair.first == listenerID;
-        }), 
-        listeners.end()
-    );
+    auto it = std::lower_bound(listeners.begin(), listeners.end(), listener);
+    listeners.erase(it);
+}
+
+
+void EventSystem::Unsubscribe(const EventListenerID listener, std::vector<EventType> types){
+
+    for (auto type : types)
+    {
+        Unsubscribe(listener, type);
+    } 
 }
 
 
@@ -76,9 +99,9 @@ void EventSystem::PublishImmediate(const Event &event) {
         return;
     }
 
-    for(auto &[id, callback] : sInstance->mListeners[event.type]) {
+    for(auto id : sInstance->mListeners[event.type]) {
 
-        callback(event);
+        sInstance->mCallbacks[id](event);
     }
 }
 
