@@ -51,7 +51,7 @@ private:
     static EventSystem *sInstance;
 
     EventListenerID mTotalListeners;
-    std::unordered_map<EventListenerID, EventCallback> mCallbacks;
+    std::unordered_map<EventListenerID, std::pair<EventCallback, uint32_t>> mCallbacks;
     std::unordered_map<EventType, std::vector<EventListenerID>> mListeners;
 
     std::queue<Event> mEventQueue;

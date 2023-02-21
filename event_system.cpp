@@ -13,8 +13,8 @@ EventSystem::EventSystem() : mTotalListeners {0} {};
 
 void EventSystem::StartUp() {
 
-    if(!sInstance) {
-
+    if(!sInstance)
+    {
         sInstance = new EventSystem;
     }
 }
@@ -22,9 +22,10 @@ void EventSystem::StartUp() {
 
 void EventSystem::ShutDown() {
 
-    if(sInstance) {
-
+    if(sInstance)
+    {
         delete sInstance;
+        sInstance = nullptr;
     }
 }
 
@@ -34,7 +35,7 @@ EventListenerID EventSystem::Subscribe(const EventCallback &callback, EventType 
     assert(sInstance != nullptr);
 
     auto id = sInstance->mTotalListeners++;
-    sInstance->mCallbacks[id] = callback;
+    sInstance->mCallbacks[id] = {callback, 1};
     sInstance->mListeners[type].push_back(id);
 
     return id;
@@ -46,7 +47,7 @@ EventListenerID EventSystem::Subscribe(const EventCallback &callback, std::vecto
     assert(sInstance != nullptr);
 
     auto id = sInstance->mTotalListeners++;
-    sInstance->mCallbacks[id] = callback;
+    sInstance->mCallbacks[id] = {callback, types.size()};
 
     for (auto type : types)
     {
@@ -72,6 +73,11 @@ void EventSystem::Unsubscribe(const EventListenerID listener, EventType type){
     if(*it == listener)
     {
         listeners.erase(it);
+        if ( --sInstance->mCallbacks[*it].second == 0)
+        {
+            sInstance->mCallbacks.erase(*it);
+        }
+        
     }
 }
 
@@ -97,14 +103,14 @@ void EventSystem::PublishImmediate(const Event &event) {
 
     assert(sInstance != nullptr);
 
-    if(sInstance->mListeners.find(event.type) == sInstance->mListeners.end()) {
-
+    if(sInstance->mListeners.find(event.type) == sInstance->mListeners.end())
+    {
         return;
     }
 
-    for(auto id : sInstance->mListeners[event.type]) {
-
-        sInstance->mCallbacks[id](event);
+    for(auto id : sInstance->mListeners[event.type])
+    {
+        sInstance->mCallbacks[id].first(event);
     }
 }
 
@@ -113,8 +119,8 @@ void EventSystem::Update() {
 
     assert(sInstance != nullptr);
 
-    while(!sInstance->mEventQueue.empty()) {
-
+    while(!sInstance->mEventQueue.empty())
+    {
         Event event = sInstance->mEventQueue.front();
         sInstance->mEventQueue.pop();
         sInstance->PublishImmediate(event);
