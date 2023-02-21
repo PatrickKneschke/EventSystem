@@ -64,12 +64,15 @@ void EventSystem::Unsubscribe(const EventListenerID listener, EventType type){
 
     if(sInstance->mListeners.find(type) == sInstance->mListeners.end()) {
 
-        throw std::runtime_error("Tried to unsubscribe to unknown event.");
+        return;
     }
 
     auto& listeners = sInstance->mListeners[type];
     auto it = std::lower_bound(listeners.begin(), listeners.end(), listener);
-    listeners.erase(it);
+    if(*it == listener)
+    {
+        listeners.erase(it);
+    }
 }
 
 

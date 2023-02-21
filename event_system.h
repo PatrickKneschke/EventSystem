@@ -20,7 +20,7 @@ using EventCallback = std::function<void(struct Event)>;
 struct Event {
 
     EventType type;
-    std::vector<EventArg> args;
+    std::unordered_map<const char*, EventArg> args;
 };
 
 
@@ -35,7 +35,7 @@ public:
     static EventListenerID Subscribe(const EventCallback &callback, std::vector<EventType> types);
     static void Unsubscribe(const EventListenerID listener, EventType type);
     static void Unsubscribe(const EventListenerID listener, std::vector<EventType> types);
-    
+
     static void PublishQueued(const Event &event);
     static void PublishImmediate(const Event &event);
 
