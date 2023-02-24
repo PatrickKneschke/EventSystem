@@ -24,17 +24,16 @@ struct Event {
 };
 
 
+struct EventListener;
+
 class EventSystem {
+
+    friend EventListener;
 
 public:
 
     static void StartUp();
     static void ShutDown();
-
-    static EventListenerID Subscribe(const EventCallback &callback, EventType type);
-    static EventListenerID Subscribe(const EventCallback &callback, std::vector<EventType> types);
-    static void Unsubscribe(const EventListenerID listener, EventType type);
-    static void Unsubscribe(const EventListenerID listener, std::vector<EventType> types);
 
     static void PublishQueued(const Event &event);
     static void PublishImmediate(const Event &event);
@@ -46,13 +45,36 @@ public:
 
 private:
 
+    static EventListenerID GetNewListenerID();
+    static void Subscribe(const EventListener *listener);
+    static void Unsubscribe(const EventListener *listener);
+
     EventSystem();
 
     static EventSystem *sInstance;
 
-    EventListenerID mTotalListeners;
-    std::unordered_map<EventListenerID, std::pair<EventCallback, uint32_t>> mCallbacks;
-    std::unordered_map<EventType, std::vector<EventListenerID>> mListeners;
+    EventListenerID mNextListenerID;
+    std::unordered_map<EventType, std::vector<const EventListener*>> mListeners;
 
     std::queue<Event> mEventQueue;
+};
+
+
+struct EventListener {
+
+    EventListener(EventCallback &&callback_, std::vector<EventType> &&types_) 
+        : callback {std::forward<EventCallback>(callback_)}, types {std::forward<std::vector<EventType>>(types_)} 
+    {
+        id = EventSystem::GetNewListenerID();
+        EventSystem::Subscribe(this);
+    }
+
+    ~EventListener() {
+
+        EventSystem::Unsubscribe(this);
+    }
+
+    EventListenerID id;
+    EventCallback callback;
+    std::vector<EventType> types;
 };

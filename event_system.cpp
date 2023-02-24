@@ -8,7 +8,7 @@
 EventSystem* EventSystem::sInstance = nullptr;
 
 
-EventSystem::EventSystem() : mTotalListeners {0} {};
+EventSystem::EventSystem() : mNextListenerID {0} {};
 
 
 void EventSystem::StartUp() {
@@ -30,64 +30,41 @@ void EventSystem::ShutDown() {
 }
 
 
-EventListenerID EventSystem::Subscribe(const EventCallback &callback, EventType type) {
+EventListenerID EventSystem::GetNewListenerID() {
 
     assert(sInstance != nullptr);
 
-    auto id = sInstance->mTotalListeners++;
-    sInstance->mCallbacks[id] = {callback, 1};
-    sInstance->mListeners[type].push_back(id);
-
-    return id;
+    return sInstance->mNextListenerID++;
 }
 
 
-EventListenerID EventSystem::Subscribe(const EventCallback &callback, std::vector<EventType> types) {
+void EventSystem::Subscribe(const EventListener *listener) {
 
     assert(sInstance != nullptr);
 
-    auto id = sInstance->mTotalListeners++;
-    sInstance->mCallbacks[id] = {callback, types.size()};
+    for(auto type : listener->types) {
 
-    for (auto type : types)
-    {
-        sInstance->mListeners[type].push_back(id);
+        sInstance->mListeners[type].push_back(listener);
     }
-    
-
-    return id;
 }
 
 
-void EventSystem::Unsubscribe(const EventListenerID listener, EventType type){
+void EventSystem::Unsubscribe(const EventListener *listener){
 
     assert(sInstance != nullptr);
 
-    if(sInstance->mListeners.find(type) == sInstance->mListeners.end()) {
-
-        return;
-    }
-
-    auto& listeners = sInstance->mListeners[type];
-    auto it = std::lower_bound(listeners.begin(), listeners.end(), listener);
-    if(*it == listener)
+    for(auto type : listener->types)
     {
-        listeners.erase(it);
-        if ( --sInstance->mCallbacks[*it].second == 0)
+        auto it = std::lower_bound(sInstance->mListeners[type].begin(), sInstance->mListeners[type].end(), listener, [](const EventListener *a, const EventListener *b){
+
+             return a->id < b->id;
+        });
+
+        if((*it)->id ==listener->id)
         {
-            sInstance->mCallbacks.erase(*it);
+            sInstance->mListeners[type].erase(it);
         }
-        
     }
-}
-
-
-void EventSystem::Unsubscribe(const EventListenerID listener, std::vector<EventType> types){
-
-    for (auto type : types)
-    {
-        Unsubscribe(listener, type);
-    } 
 }
 
 
@@ -108,9 +85,9 @@ void EventSystem::PublishImmediate(const Event &event) {
         return;
     }
 
-    for(auto id : sInstance->mListeners[event.type])
+    for (auto el : sInstance->mListeners[event.type])
     {
-        sInstance->mCallbacks[id].first(event);
+        el->callback(event);
     }
 }
 
@@ -119,10 +96,10 @@ void EventSystem::Update() {
 
     assert(sInstance != nullptr);
 
-    while(!sInstance->mEventQueue.empty())
+    while (!sInstance->mEventQueue.empty())
     {
         Event event = sInstance->mEventQueue.front();
         sInstance->mEventQueue.pop();
         sInstance->PublishImmediate(event);
-    }
+    } 
 }
